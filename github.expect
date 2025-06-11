@@ -1,0 +1,49 @@
+#!/usr/bin/expect -f
+#
+# Uso opcional:
+#     ./github.expect [usuario] [token]
+#
+# Se não passar argumentos, busca em:
+#   git config --get github.ivancarlos.user
+#   git config --get github.ivancarlos.token
+#
+
+# 1) aguarda o tempo que for necessário
+set timeout -1
+
+# 2) obtém valores do Git-config (trim remove \n final)
+set username [string trim [exec git config --get github.ivancarlos.user 2>/dev/null]]
+set pass     [string trim [exec git config --get github.ivancarlos.token 2>/dev/null]]
+
+# 3) se o usuário forneceu argumentos, eles prevalecem
+if {[llength $argv] >= 1} { set username [lindex $argv 0] }
+if {[llength $argv] >= 2} { set pass     [lindex $argv 1] }
+
+# 4) valida
+if {$username eq "" || $pass eq ""} {
+    puts stderr "Erro: usuário ou token não definido.\n\
+Configure com:\n\
+  git config --global github.ivancarlos.user  <seu-usuario>\n\
+  git config --global github.ivancarlos.token <seu-PAT>\n\
+ou passe como argumentos: ./github.expect <user> <token>"
+    exit 1
+}
+
+# 5) executa o push
+spawn git push --set-upstream origin main
+
+expect {
+    -re {Username for 'https://github\.com':} {
+        send "$username\r"
+        exp_continue
+    }
+
+    -re {Password for 'https://.*@github\.com':} {
+        send "$pass\r"
+        exp_continue
+    }
+
+    eof
+}
+
+# fim
